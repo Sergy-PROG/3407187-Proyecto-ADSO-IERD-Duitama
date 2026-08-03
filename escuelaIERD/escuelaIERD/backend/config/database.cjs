@@ -12,4 +12,3 @@ const pool = mysql.createPool({
 });
 
 module.exports = pool;
-const noUsada = 123;
