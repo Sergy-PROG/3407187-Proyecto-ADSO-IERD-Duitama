@@ -17,7 +17,7 @@ app.use('/api/asistencias', require('./routes/asistenciaRoutes.cjs'));
 app.use('/api/notas', require('./routes/notaRoutes.cjs'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', mesconst noUsada = 123;sage: 'Servidor funcionando correctamente' });
+  res.json({ status: 'OK', message: 'Servidor funcionando correctamente' });
 });
 
 app.listen(PORT, () => {
