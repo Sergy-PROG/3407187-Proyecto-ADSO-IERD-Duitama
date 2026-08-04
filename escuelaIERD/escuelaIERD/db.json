@@ -1,0 +1,172 @@
+{
+  "usuarios": [
+    {
+      "id": 1,
+      "nombre": "Administrador",
+      "email": "admin@ierdduitama.com",
+      "password": "admin123",
+      "rol": "admin"
+    },
+    {
+      "id": 2,
+      "nombre": "Profesor",
+      "email": "profesor@ierdduitama.com",
+      "password": "profe123",
+      "rol": "profesor"
+    },
+    {
+      "id": 3,
+      "nombre": "Santiago Pérez",
+      "email": "santiago@iestudiante.com",
+      "password": "1123456789",
+      "rol": "estudiante"
+    },
+    {
+      "id": 4,
+      "nombre": "Laura Gómez",
+      "email": "laura@correo.com",
+      "password": "1123456789",
+      "rol": "padre"
+    }
+  ],
+  "estudiantes": [
+    {
+      "id": 1,
+      "nombre": "Santiago Pérez",
+      "documento": "1123456789",
+      "grupo": "Infantil",
+      "acudiente": "Laura Gómez",
+      "estado": "Activo",
+      "foto": "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=60&h=60&q=80",
+      "logros": [
+        "asistencia",
+        "tecnica"
+      ]
+    },
+    {
+      "id": 2,
+      "nombre": "Mateo García",
+      "documento": "1234567890",
+      "grupo": "Infantil",
+      "acudiente": "María López",
+      "estado": "Activo",
+      "foto": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=60&h=60&q=80",
+      "logros": [
+        "companero"
+      ]
+    },
+    {
+      "id": 3,
+      "nombre": "Yulian Camilo Arevalo",
+      "documento": "1123456789",
+      "grupo": "Juvenil",
+      "acudiente": "Juan Arevalo",
+      "estado": "Activo",
+      "foto": "",
+      "logros": [
+        "progreso"
+      ]
+    },
+    {
+      "id": 4,
+      "nombre": "María Fernanda Ruiz",
+      "documento": "1567890123",
+      "grupo": "Femenino",
+      "acudiente": "Pedro Ruiz",
+      "estado": "Activo",
+      "foto": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?auto=format&fit=crop&w=60&h=60&q=80",
+      "logros": []
+    },
+    {
+      "id": 5,
+      "nombre": "Juan Pablo López",
+      "documento": "1456789012",
+      "grupo": "Juvenil",
+      "acudiente": "Ana López",
+      "estado": "Activo",
+      "foto": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=60&h=60&q=80",
+      "logros": []
+    },
+    {
+      "id": 6,
+      "nombre": "Valentina Martínez",
+      "documento": "1789012345",
+      "grupo": "Femenino",
+      "acudiente": "Roberto Martínez",
+      "estado": "Activo",
+      "foto": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=60&h=60&q=80",
+      "logros": []
+    },
+    {
+      "id": 7,
+      "nombre": "Camilo Torres",
+      "documento": "1890123456",
+      "grupo": "Prejuvenil",
+      "acudiente": "Patricia Torres",
+      "estado": "Activo",
+      "foto": "",
+      "logros": []
+    },
+    {
+      "id": 8,
+      "nombre": "Samuel Herrera",
+      "documento": "1678901234",
+      "grupo": "Prejuvenil",
+      "acudiente": "Elena Herrera",
+      "estado": "Activo",
+      "foto": "",
+      "logros": []
+    },
+    {
+      "id": 9,
+      "nombre": "Lucía Díaz",
+      "documento": "1345678901",
+      "grupo": "Juvenil",
+      "acudiente": "Carlos Díaz",
+      "estado": "Activo",
+      "foto": "",
+      "logros": [
+        "tecnica"
+      ]
+    }
+  ],
+  "profesores": [
+    {
+      "id": 1,
+      "nombre": "Carlos Mendoza",
+      "email": "profesor@ierdduitama.com",
+      "especialidad": "Director Técnico",
+      "foto": "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?auto=format&fit=crop&w=60&h=60&q=80"
+    }
+  ],
+  "pagos": [],
+  "asistencias": [],
+  "notas": [
+    {
+      "estudianteId": "1",
+      "fecha": "2026-08-03",
+      "tecnica": "4",
+      "tactica": "4",
+      "actitud": "4",
+      "id": 1
+    },
+    {
+      "estudianteId": 1,
+      "fecha": "2026-08-03",
+      "tecnica": 4,
+      "tactica": 4,
+      "actitud": 4,
+      "grupo": "Infantil",
+      "id": 2
+    },
+    {
+      "estudianteId": 2,
+      "fecha": "2026-08-03",
+      "tecnica": 5,
+      "tactica": 3,
+      "actitud": 3,
+      "grupo": "Infantil",
+      "id": 3
+    }
+  ]
+}
