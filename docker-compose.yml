@@ -1,0 +1,29 @@
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  backend:
+    build: ./escuelaIERD/escuelaIERD/backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./escuelaIERD/escuelaIERD/backend/.env
+    depends_on:
+      - db
+
+  frontend:
+    build: ./escuelaIERD/escuelaIERD
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  db_data:
