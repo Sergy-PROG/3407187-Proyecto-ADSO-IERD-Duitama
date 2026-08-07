@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Costo de hashing bcrypt — balance entre seguridad y rendimiento (estándar recomendado)
+const SALT_ROUNDS = 10;
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -10,6 +13,7 @@ const login = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
     
     if (rows.length === 0) {
+      // Mensaje genérico: no revela si falló el email o la contraseña
       return res.status(401).json({ success: false, error: 'Credenciales incorrectas' });
     }
 
@@ -17,6 +21,7 @@ const login = async (req, res) => {
     const isValid = await bcrypt.compare(password, user.password);
     
     if (!isValid) {
+      // Mismo mensaje genérico que arriba, mismo código 401
       return res.status(401).json({ success: false, error: 'Credenciales incorrectas' });
     }
 
@@ -55,7 +60,8 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, error: 'El correo ya está registrado' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Nunca se guarda la contraseña en texto plano — solo el hash
+    const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
     
     const [result] = await pool.query(
       `INSERT INTO usuarios 
