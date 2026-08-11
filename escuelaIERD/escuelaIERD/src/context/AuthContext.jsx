@@ -26,52 +26,30 @@ export function AuthProvider({ children }) {
   const login = async (email, password, remember = false) => {
     try {
       console.log('🔐 AuthContext: Intentando login con:', email);
-      
-      const usuario = await api.getUsuarioByEmail(email);
-      console.log('📦 AuthContext: Usuario encontrado:', usuario);
-      
-      if (usuario && usuario.password === password) {
-        console.log('✅ AuthContext: Contraseña correcta');
-        
-        const userData = {
-          id: usuario.id,
-          nombre: usuario.nombre,
-          email: usuario.email,
-          rol: usuario.rol || usuario.role, // Por si acaso
-          apodo: usuario.apodo || '',
-          telefono: usuario.telefono || '',
-          cumpleanos: usuario.cumpleanos || '',
-          foto: usuario.foto || '',
-          logged: true
-        };
 
-        console.log('👤 AuthContext: userData a guardar:', userData);
+      const result = await api.login(email, password);
+      console.log('📦 AuthContext: Respuesta del servidor:', result);
 
-        const storage = remember ? localStorage : sessionStorage;
-        storage.setItem('ierd_session', JSON.stringify(userData));
-        setUser(userData);
-        
-        console.log('✅ AuthContext: Usuario guardado correctamente');
-        return { success: true, user: userData };
-      }
-      
-      console.log('❌ AuthContext: Credenciales incorrectas');
-      return { success: false, error: 'Credenciales incorrectas' };
+      const userData = { ...result.user, logged: true };
+
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem('ierd_session', JSON.stringify(userData));
+      storage.setItem('ierd_token', result.token);
+
+      setUser(userData);
+
+      console.log('✅ AuthContext: Usuario guardado correctamente');
+      return { success: true, user: userData };
     } catch (error) {
       console.error('❌ AuthContext: Error en login:', error);
-      return { success: false, error: 'Error al conectar con el servidor' };
+      return { success: false, error: error.message || 'Error al conectar con el servidor' };
     }
   };
 
   // ===== REGISTRO =====
   const register = async (userData) => {
     try {
-      const existing = await api.getUsuarioByEmail(userData.email);
-      if (existing) {
-        return { success: false, error: 'El correo ya está registrado' };
-      }
-
-      const newUser = await api.createUsuario({
+      const result = await api.register({
         nombre: userData.nombre,
         email: userData.email,
         password: userData.password,
@@ -82,17 +60,19 @@ export function AuthProvider({ children }) {
         foto: userData.foto || ''
       });
 
-      return { success: true, user: newUser };
+      return { success: true, user: result.user };
     } catch (error) {
       console.error('Error en registro:', error);
-      return { success: false, error: 'Error al registrar usuario' };
+      return { success: false, error: error.message || 'Error al registrar usuario' };
     }
   };
 
   // ===== LOGOUT =====
   const logout = () => {
     localStorage.removeItem('ierd_session');
+    localStorage.removeItem('ierd_token');
     sessionStorage.removeItem('ierd_session');
+    sessionStorage.removeItem('ierd_token');
     setUser(null);
     console.log('👋 Sesión cerrada');
   };
@@ -104,17 +84,9 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'No hay usuario autenticado' };
       }
 
-      // Actualizar en la API (si tienes endpoint)
-      // Por ahora solo actualizamos localmente
-      const updatedUser = {
-        ...user,
-        nombre: data.nombre || user.nombre,
-        apodo: data.apodo || user.apodo,
-        telefono: data.telefono || user.telefono,
-        cumpleanos: data.cumpleanos || user.cumpleanos,
-        foto: data.foto || user.foto,
-        email: data.email || user.email
-      };
+      const result = await api.updateProfile(data);
+
+      const updatedUser = { ...user, ...result.user, logged: true };
 
       const storage = localStorage.getItem('ierd_session') ? localStorage : sessionStorage;
       storage.setItem('ierd_session', JSON.stringify(updatedUser));
@@ -123,7 +95,7 @@ export function AuthProvider({ children }) {
       return { success: true, user: updatedUser };
     } catch (error) {
       console.error('Error actualizando perfil:', error);
-      return { success: false, error: 'Error al actualizar el perfil' };
+      return { success: false, error: error.message || 'Error al actualizar el perfil' };
     }
   };
 

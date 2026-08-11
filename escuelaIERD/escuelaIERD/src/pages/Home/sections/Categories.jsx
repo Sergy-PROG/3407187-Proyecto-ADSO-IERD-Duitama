@@ -46,7 +46,9 @@ export default function Categories() {
     if (stored) {
       try {
         setCategories(JSON.parse(stored));
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error al parsear categorías guardadas:', e);
+      }
     }
   }, []);
 
@@ -78,7 +80,7 @@ export default function Categories() {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {categories.map((cat, index) => {
+          {categories.map((cat) => {
             const colorClass = colorClasses[cat.nombre] || 'club-green';
             return (
               <div 

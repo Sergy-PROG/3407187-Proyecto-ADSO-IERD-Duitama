@@ -1,6 +1,57 @@
-const API_URL = 'http://localhost:5001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Helper para obtener el token guardado
+function getToken() {
+  return localStorage.getItem('ierd_token') || sessionStorage.getItem('ierd_token');
+}
 
 export const api = {
+  // ===== AUTH =====
+  async login(email, password) {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+    return data; // { success, token, user }
+  },
+
+  async register(userData) {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al registrar usuario');
+    return data; // { success, user }
+  },
+
+  async getProfile() {
+    const res = await fetch(`${API_URL}/auth/profile`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al obtener perfil');
+    return data; // { success, user }
+  },
+
+  async updateProfile(profileData) {
+    const res = await fetch(`${API_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${getToken()}`
+      },
+      body: JSON.stringify(profileData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al actualizar el perfil');
+    return data; // { success, user }
+  },
+
   // ===== USUARIOS =====
   async getUsuarios() {
     try {

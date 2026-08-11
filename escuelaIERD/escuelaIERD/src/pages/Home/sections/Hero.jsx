@@ -14,7 +14,9 @@ export default function Hero() {
       try {
         const data = JSON.parse(stored);
         setHeroData(prev => ({ ...prev, ...data }));
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error al parsear datos del hero guardados:', e);
+      }
     }
   }, []);
 

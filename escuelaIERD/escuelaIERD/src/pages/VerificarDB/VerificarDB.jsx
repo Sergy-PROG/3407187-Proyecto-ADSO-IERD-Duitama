@@ -141,6 +141,7 @@ export default function VerificarDB() {
         await cargarDatos();
       }
     } catch (err) {
+      console.error('Error al eliminar:', err);
       setError('Error al eliminar');
     }
   };
