@@ -14,9 +14,7 @@ export default function Admin() {
     addEstudiante, updateEstudiante, deleteEstudiante,
     addProfesor, updateProfesor, deleteProfesor,
     addPago, updatePago, deletePago,
-    addUsuario, updateUsuario, deleteUsuario,
-    addAsistencia, deleteAsistencia,
-    addNota, deleteNota
+    addUsuario, updateUsuario, deleteUsuario
   } = useData();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -68,6 +66,7 @@ export default function Admin() {
         alert('❌ Error al actualizar el perfil');
       }
     } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
       alert('❌ Error al actualizar el perfil');
     }
   };

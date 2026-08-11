@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +14,6 @@ export default function Profesor() {
     addEstudiante, updateEstudiante, deleteEstudiante,
     addAsistencia, updateAsistencia, deleteAsistencia,
     addNota, updateNota, deleteNota,
-    getEstudiantesByGrupo,
     getAsistenciasByGrupo,
     getNotasByGrupo,
     getPromedioByEstudiante,
@@ -77,6 +76,7 @@ export default function Profesor() {
         alert('❌ Error al actualizar el perfil');
       }
     } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
       alert('❌ Error al actualizar el perfil');
     }
   };
@@ -711,6 +711,7 @@ export default function Profesor() {
         }
         await cargarDatos();
       } catch (error) {
+        console.error('Error al guardar la asistencia:', error);
         alert('Error al guardar la asistencia');
       }
     };

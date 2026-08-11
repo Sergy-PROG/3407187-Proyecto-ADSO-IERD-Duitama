@@ -146,6 +146,7 @@ export default function Login() {
         setError(result.error || 'Credenciales incorrectas');
       }
     } catch (error) {
+      console.error('Error al iniciar sesión:', error);
       setError('Error al conectar con el servidor');
       setLoading(false);
     }

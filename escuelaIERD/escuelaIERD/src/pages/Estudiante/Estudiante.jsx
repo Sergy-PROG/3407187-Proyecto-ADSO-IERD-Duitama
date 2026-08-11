@@ -3,7 +3,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Icon } from '@iconify/react';
 import ProfileModal from '../../components/common/ProfileModal';
 import GoalCard from './components/GoalCard';
 import StudentStats from './components/StudentStats';
@@ -52,6 +51,7 @@ export default function Estudiante() {
         alert('❌ Error al actualizar el perfil');
       }
     } catch (error) {
+      console.error('Error al actualizar el perfil:', error);
       alert('❌ Error al actualizar el perfil');
     }
   };
