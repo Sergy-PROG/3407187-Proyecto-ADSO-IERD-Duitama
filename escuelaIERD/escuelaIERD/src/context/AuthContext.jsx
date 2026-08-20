@@ -57,7 +57,10 @@ export function AuthProvider({ children }) {
         apodo: userData.apodo || '',
         telefono: userData.telefono || '',
         cumpleanos: userData.cumpleanos || '',
-        foto: userData.foto || ''
+        foto: userData.foto || '',
+        hijo: userData.hijo || '',
+        parentesco: userData.parentesco || '',
+        documentoHijo: userData.documentoHijo || ''
       });
 
       return { success: true, user: result.user };

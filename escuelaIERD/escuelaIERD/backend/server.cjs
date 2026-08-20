@@ -10,6 +10,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api/auth', require('./routes/authRoutes.cjs'));
+app.use('/api/usuarios', require('./routes/usuarioRoutes.cjs'));
 app.use('/api/estudiantes', require('./routes/estudianteRoutes.cjs'));
 app.use('/api/profesores', require('./routes/profesorRoutes.cjs'));
 app.use('/api/pagos', require('./routes/pagoRoutes.cjs'));

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS estudiantes (
   acudiente VARCHAR(100),
   estado ENUM('Activo', 'Inactivo') DEFAULT 'Activo',
   foto TEXT,
+  logros TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

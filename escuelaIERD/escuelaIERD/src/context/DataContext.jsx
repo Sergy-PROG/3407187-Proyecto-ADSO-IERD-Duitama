@@ -11,7 +11,8 @@ export function DataProvider({ children }) {
     profesores: [],
     pagos: [],
     asistencias: [],
-    notas: []
+    notas: [],
+    usuarios: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,22 +29,24 @@ export function DataProvider({ children }) {
     try {
       console.log('📊 DataContext: Cargando datos...');
       
-      const [estudiantes, profesores, pagos, asistencias, notas] = await Promise.all([
+      const [estudiantes, profesores, pagos, asistencias, notas, usuarios] = await Promise.all([
         api.getEstudiantes().catch(() => []),
         api.getProfesores().catch(() => []),
         api.getPagos().catch(() => []),
         api.getAsistencias().catch(() => []),
-        api.getNotas().catch(() => [])
+        api.getNotas().catch(() => []),
+        api.getUsuarios().catch(() => [])
       ]);
 
-      console.log('📊 DataContext: Datos cargados:', { estudiantes, profesores, pagos, asistencias, notas });
+      console.log('📊 DataContext: Datos cargados:', { estudiantes, profesores, pagos, asistencias, notas, usuarios });
 
       setData({
         estudiantes: estudiantes || [],
         profesores: profesores || [],
         pagos: pagos || [],
         asistencias: asistencias || [],
-        notas: notas || []
+        notas: notas || [],
+        usuarios: usuarios || []
       });
     } catch (error) {
       console.error('❌ DataContext: Error cargando datos:', error);
@@ -329,6 +332,55 @@ export function DataProvider({ children }) {
     return data.notas.filter(n => ids.includes(n.estudianteId));
   };
 
+  // ===== USUARIOS =====
+  const addUsuario = async (usuario) => {
+    try {
+      const nuevo = await api.createUsuario(usuario);
+      if (nuevo) {
+        setData(prev => ({
+          ...prev,
+          usuarios: [...prev.usuarios, nuevo]
+        }));
+        return { success: true, data: nuevo };
+      }
+      return { success: false, error: 'Error al crear usuario' };
+    } catch (error) {
+      console.error('Error creando usuario:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const updateUsuario = async (id, updatedData) => {
+    try {
+      const actualizado = await api.updateUsuario(id, updatedData);
+      if (actualizado) {
+        setData(prev => ({
+          ...prev,
+          usuarios: prev.usuarios.map(u => u.id === id ? actualizado : u)
+        }));
+        return { success: true, data: actualizado };
+      }
+      return { success: false, error: 'Error al actualizar usuario' };
+    } catch (error) {
+      console.error('Error actualizando usuario:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const deleteUsuario = async (id) => {
+    try {
+      await api.deleteUsuario(id);
+      setData(prev => ({
+        ...prev,
+        usuarios: prev.usuarios.filter(u => u.id !== id)
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const getPromedioByEstudiante = (estudianteId) => {
     const notas = data.notas.filter(n => n.estudianteId === estudianteId);
     if (notas.length === 0) return 0;
@@ -364,7 +416,10 @@ export function DataProvider({ children }) {
     deleteNota,
     getNotasByEstudiante,
     getNotasByGrupo,
-    getPromedioByEstudiante
+    getPromedioByEstudiante,
+    addUsuario,
+    updateUsuario,
+    deleteUsuario
   };
 
   return (

@@ -8,8 +8,8 @@ const { authMiddleware, adminOnly, profesorOnly, ownerOrStaff } = require('../mi
 
 router.get('/', authMiddleware, profesorOnly, getEstudiantes);
 router.get('/:id', authMiddleware, ownerOrStaff, getEstudianteById);
-router.post('/', authMiddleware, adminOnly, createEstudiante);
-router.put('/:id', authMiddleware, adminOnly, updateEstudiante);
+router.post('/', authMiddleware, profesorOnly, createEstudiante);
+router.put('/:id', authMiddleware, profesorOnly, updateEstudiante);
 router.delete('/:id', authMiddleware, adminOnly, deleteEstudiante);
 
 module.exports = router;
