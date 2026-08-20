@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const [role, setRole] = useState('admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,6 +57,7 @@ export default function Login() {
   });
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [isAdult, setIsAdult] = useState(false);
   
@@ -189,7 +190,7 @@ export default function Login() {
     }
   };
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     setRegError('');
     
@@ -221,24 +222,29 @@ export default function Login() {
         return;
       }
     }
+
+    setRegLoading(true);
+
+    const result = await register({
+      nombre: name,
+      email,
+      password,
+      rol: role,
+      telefono: role === 'padre' ? phone : '',
+      hijo: role === 'padre' ? childName : '',
+      parentesco: role === 'padre' ? parentesco : '',
+      documentoHijo: role === 'padre' ? childDoc : ''
+    });
+
+    setRegLoading(false);
+
+    if (!result.success) {
+      setRegError(result.error || 'No se pudo completar el registro.');
+      return;
+    }
     
     setRegSuccess(true);
     setRegError('');
-    
-    const newUser = {
-      name,
-      email,
-      role,
-      childName: role === 'padre' ? childName : null,
-      childDoc: role === 'padre' ? childDoc : null,
-      parentesco: role === 'padre' ? parentesco : null,
-      phone: role === 'padre' ? phone : null,
-      registeredAt: new Date().toISOString()
-    };
-    
-    const users = JSON.parse(localStorage.getItem('ierd_registered_users') || '[]');
-    users.push(newUser);
-    localStorage.setItem('ierd_registered_users', JSON.stringify(users));
     
     setTimeout(() => {
       setShowRegister(false);
@@ -599,9 +605,10 @@ export default function Login() {
 
                   <button 
                     type="submit" 
-                    className="w-full bg-club-red hover:bg-club-red-light text-white font-semibold py-3 rounded-xl transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
+                    disabled={regLoading}
+                    className="w-full bg-club-red hover:bg-club-red-light text-white font-semibold py-3 rounded-xl transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                   >
-                    <span>👤</span> Crear Cuenta
+                    <span>👤</span> {regLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
                   </button>
                 </form>
               </>

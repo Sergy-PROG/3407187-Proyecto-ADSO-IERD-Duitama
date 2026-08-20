@@ -56,24 +56,29 @@ export default function Estudiante() {
     }
   };
 
-  // Buscar el ID del estudiante actual
-  const estudianteActual = data.estudiantes?.find(
-    e => e.nombre?.toLowerCase() === user?.displayName?.toLowerCase() || 
-         e.nombre === user?.displayName ||
-         e.nombre?.toLowerCase() === user?.childKey?.toLowerCase()
-  );
+  // Buscar el estudiante actual según el rol de la sesión:
+  // - "estudiante": se vincula por la FK usuario_id de la tabla estudiantes
+  // - "padre": se vincula por el nombre del hijo/a guardado en su usuario
+  const userRol = user?.rol || user?.role;
+  const estudianteActual = data.estudiantes?.find(e => {
+    if (userRol === 'padre') {
+      return e.nombre?.toLowerCase() === user?.hijo?.toLowerCase();
+    }
+    return e.usuario_id === user?.id || e.nombre?.toLowerCase() === user?.nombre?.toLowerCase();
+  });
 
   const estudianteId = estudianteActual?.id;
   const notas = estudianteId ? getNotasByEstudiante(estudianteId) : [];
   const asistencias = estudianteId ? getAsistenciasByEstudiante(estudianteId) : [];
   const promedio = estudianteId ? getPromedioByEstudiante(estudianteId) : 0;
+  const esPadre = userRol === 'padre';
 
   const menuItems = [
     { id: 'inicio', label: '🏠 Inicio', icon: '🏠' },
-    { id: 'perfil', label: '👤 Mi Perfil', icon: '👤' },
-    { id: 'horario', label: '📅 Mi Horario', icon: '📅' },
-    { id: 'notas', label: '📊 Mis Notas', icon: '📊' },
-    { id: 'asistencia', label: '✅ Mi Asistencia', icon: '✅' },
+    { id: 'perfil', label: esPadre ? '👤 Mi Perfil (Acudiente)' : '👤 Mi Perfil', icon: '👤' },
+    { id: 'horario', label: esPadre ? '📅 Horario del hijo/a' : '📅 Mi Horario', icon: '📅' },
+    { id: 'notas', label: esPadre ? '📊 Notas del hijo/a' : '📊 Mis Notas', icon: '📊' },
+    { id: 'asistencia', label: esPadre ? '✅ Asistencia del hijo/a' : '✅ Mi Asistencia', icon: '✅' },
   ];
 
   const horario = [
@@ -111,8 +116,16 @@ export default function Estudiante() {
             transition={{ duration: 0.5 }}
           >
             <div className="bg-gradient-to-r from-club-green/90 to-club-dark-2 rounded-2xl p-8 text-white mb-6">
-              <h2 className="text-2xl font-bold">¡Bienvenido, {user?.displayName || 'Estudiante'}! ⚽</h2>
-              <p className="text-white/70 mt-2">Sigue entrenando con pasión y disciplina. ¡Tú puedes!</p>
+              <h2 className="text-2xl font-bold">
+                {esPadre
+                  ? `¡Bienvenido/a, ${user?.nombre || 'Acudiente'}! 👨‍👦`
+                  : `¡Bienvenido, ${user?.nombre || user?.displayName || 'Estudiante'}! ⚽`}
+              </h2>
+              <p className="text-white/70 mt-2">
+                {esPadre
+                  ? `Aquí puedes seguir el progreso de ${estudianteActual?.nombre || user?.hijo || 'tu hijo/a'} en la escuela.`
+                  : 'Sigue entrenando con pasión y disciplina. ¡Tú puedes!'}
+              </p>
             </div>
 
             <StudentStats stats={studentStats} />
@@ -336,8 +349,12 @@ export default function Estudiante() {
         </div>
 
         <div className="mb-6 p-4 bg-white/5 rounded-xl">
-          <p className="text-white font-semibold">{user?.displayName || user?.nombre || 'Estudiante'}</p>
-          <p className="text-xs text-white/40">{estudianteActual?.grupo || 'Sin categoría'}</p>
+          <p className="text-white font-semibold">{user?.nombre || 'Usuario'}</p>
+          {esPadre ? (
+            <p className="text-xs text-white/40">Acudiente de {estudianteActual?.nombre || user?.hijo || '—'}</p>
+          ) : (
+            <p className="text-xs text-white/40">{estudianteActual?.grupo || 'Sin categoría'}</p>
+          )}
         </div>
 
         <nav className="space-y-1">

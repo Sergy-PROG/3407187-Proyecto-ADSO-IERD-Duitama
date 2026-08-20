@@ -28,6 +28,7 @@ export default function Profesor() {
   const [selectedFecha, setSelectedFecha] = useState(new Date().toISOString().split('T')[0]);
   const [formData, setFormData] = useState({});
   const [formError, setFormError] = useState('');
+  const [buscarEstudiante, setBuscarEstudiante] = useState('');
 
   // ===== ESTADO PARA EL PERFIL =====
   const [showProfile, setShowProfile] = useState(false);
@@ -565,7 +566,12 @@ export default function Profesor() {
 
   // ===== RENDER ESTUDIANTES =====
   const renderEstudiantes = () => {
-    const estudiantes = data.estudiantes.filter(e => e.grupo === selectedGrupo);
+    const term = buscarEstudiante.trim().toLowerCase();
+    const estudiantes = term
+      ? (data.estudiantes || []).filter(e =>
+          e.nombre?.toLowerCase().includes(term) || e.documento?.toLowerCase().includes(term)
+        )
+      : data.estudiantes.filter(e => e.grupo === selectedGrupo);
 
     return (
       <motion.div
@@ -573,18 +579,20 @@ export default function Profesor() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-4">
             <h3 className="font-semibold text-lg">👨‍🎓 Gestión de Estudiantes</h3>
             <select 
               value={selectedGrupo} 
               onChange={(e) => setSelectedGrupo(e.target.value)}
-              className="px-4 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-club-green outline-none"
+              disabled={!!term}
+              className="px-4 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-club-green outline-none disabled:opacity-50"
             >
               <option value="Infantil">⚽ Infantil</option>
               <option value="Prejuvenil">⚽ Prejuvenil</option>
               <option value="Juvenil">⚽ Juvenil</option>
               <option value="Femenino">⚽ Femenino</option>
+              <option value="Sin asignar">🕓 Sin asignar</option>
             </select>
           </div>
           <button onClick={() => openModal('estudiante')} className="bg-club-green text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-club-green-light transition-all flex items-center gap-2">
@@ -592,19 +600,43 @@ export default function Profesor() {
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {estudiantes.map((e) => (
-            <StudentProgressCard 
-              key={e.id} 
-              student={{
-                ...e,
-                tecnica: getPromedioByEstudiante(e.id) || 3,
-                tactica: getPromedioByEstudiante(e.id) || 3,
-                actitud: getPromedioByEstudiante(e.id) || 3
-              }} 
-            />
-          ))}
+        <div className="relative mb-6 max-w-md">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔍</span>
+          <input
+            type="text"
+            value={buscarEstudiante}
+            onChange={(e) => setBuscarEstudiante(e.target.value)}
+            placeholder="Buscar estudiante por nombre o documento (todos los grupos)..."
+            className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-club-green outline-none"
+          />
         </div>
+
+        {term && estudiantes.some(e => e.grupo === 'Sin asignar') && (
+          <div className="mb-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+            🕓 Hay estudiantes en tu búsqueda sin un grupo asignado — edítalos para asignarles su categoría real.
+          </div>
+        )}
+
+        {estudiantes.length === 0 ? (
+          <div className="text-center py-12 text-neutral-400">
+            {term ? `Sin resultados para "${buscarEstudiante}"` : 'No hay estudiantes en este grupo'}
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {estudiantes.map((e) => (
+              <StudentProgressCard 
+                key={e.id} 
+                student={{
+                  ...e,
+                  tecnica: getPromedioByEstudiante(e.id) || 3,
+                  tactica: getPromedioByEstudiante(e.id) || 3,
+                  actitud: getPromedioByEstudiante(e.id) || 3
+                }} 
+                onClick={term ? () => openModal('estudiante', e) : undefined}
+              />
+            ))}
+          </div>
+        )}
       </motion.div>
     );
   };

@@ -1,13 +1,14 @@
 import { motion } from 'framer-motion';
 import ProgressBar from '../../Admin/components/ProgressBar';
 
-export default function StudentProgressCard({ student }) {
+export default function StudentProgressCard({ student, onClick }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ y: -4 }}
-      className="bg-white rounded-2xl p-5 border border-stone-100 shadow-sm"
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-5 border border-stone-100 shadow-sm ${onClick ? 'cursor-pointer hover:border-club-green-100' : ''}`}
     >
       <div className="flex items-center gap-4 mb-4">
         {student.foto ? (

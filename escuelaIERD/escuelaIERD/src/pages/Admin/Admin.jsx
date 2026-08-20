@@ -26,6 +26,7 @@ export default function Admin() {
   const [filtroGrupoAsis, setFiltroGrupoAsis] = useState('todos');
   const [filtroFechaAsis, setFiltroFechaAsis] = useState('');
   const [filtroGrupoNotas, setFiltroGrupoNotas] = useState('todos');
+  const [buscarUsuario, setBuscarUsuario] = useState('');
 
   // ===== ESTADO PARA EL PERFIL =====
   const [showProfile, setShowProfile] = useState(false);
@@ -764,17 +765,48 @@ export default function Admin() {
   };
 
   // ===== RENDER USUARIOS =====
-  const renderUsuarios = () => (
+  const ROL_LABELS = {
+    admin: { label: 'Administrador', className: 'bg-club-green-50 text-club-green' },
+    profesor: { label: 'Profesor', className: 'bg-club-orange-50 text-club-orange' },
+    estudiante: { label: 'Estudiante', className: 'bg-blue-50 text-blue-600' },
+    padre: { label: 'Padre/Acudiente', className: 'bg-purple-50 text-purple-600' }
+  };
+
+  const renderUsuarios = () => {
+    const term = buscarUsuario.trim().toLowerCase();
+    const usuariosFiltrados = (data.usuarios || []).filter(u => {
+      if (!term) return true;
+      const rolLabel = (ROL_LABELS[u.role]?.label || u.role || '').toLowerCase();
+      return (
+        u.nombre?.toLowerCase().includes(term) ||
+        u.email?.toLowerCase().includes(term) ||
+        rolLabel.includes(term)
+      );
+    });
+
+    return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h3 className="font-semibold text-lg">👤 Gestión de Usuarios</h3>
-        <button onClick={() => openModal('usuario')} className="bg-club-green text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-club-green-light transition-all flex items-center gap-2">
-          ➕ Nuevo Usuario
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400">🔍</span>
+            <input
+              type="text"
+              value={buscarUsuario}
+              onChange={(e) => setBuscarUsuario(e.target.value)}
+              placeholder="Buscar por nombre, correo o rol..."
+              className="w-full pl-9 pr-3 py-2 border border-stone-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-club-green outline-none"
+            />
+          </div>
+          <button onClick={() => openModal('usuario')} className="bg-club-green text-white text-sm font-medium px-4 py-2 rounded-xl hover:bg-club-green-light transition-all flex items-center gap-2 whitespace-nowrap">
+            ➕ Nuevo Usuario
+          </button>
+        </div>
       </div>
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -788,7 +820,14 @@ export default function Admin() {
               </tr>
             </thead>
             <tbody>
-              {data.usuarios?.map((u) => (
+              {usuariosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-neutral-400">
+                    {term ? `Sin resultados para "${buscarUsuario}"` : 'No hay usuarios registrados'}
+                  </td>
+                </tr>
+              ) : (
+                usuariosFiltrados.map((u) => (
                 <motion.tr 
                   key={u.id} 
                   initial={{ opacity: 0, x: -20 }}
@@ -799,8 +838,8 @@ export default function Admin() {
                   <td className="px-4 py-3 font-medium">{u.nombre}</td>
                   <td className="px-4 py-3">{u.email}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${u.role === 'admin' ? 'bg-club-green-50 text-club-green' : 'bg-club-orange-50 text-club-orange'}`}>
-                      {u.role === 'admin' ? 'Administrador' : 'Profesor'}
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${ROL_LABELS[u.role]?.className || 'bg-stone-100 text-neutral-500'}`}>
+                      {ROL_LABELS[u.role]?.label || u.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -814,13 +853,15 @@ export default function Admin() {
                     </div>
                   </td>
                 </motion.tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
     </motion.div>
-  );
+    );
+  };
 
   // ===== RENDER CONTENT =====
   const renderContent = () => {
