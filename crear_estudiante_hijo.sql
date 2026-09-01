@@ -1,0 +1,1 @@
+INSERT INTO usuarios (nombre, email, password, rol, telefono) VALUES ("juan miguel cardenas salazar", "andrew@gmail.com", "$2b$10$OvLgW9HKfaI5cZYVzN2c6ubJRtUxMfufHJajSgOx0pOJyW4pnTmGi", "estudiante", "3196387752");

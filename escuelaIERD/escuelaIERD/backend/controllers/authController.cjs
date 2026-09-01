@@ -1,10 +1,14 @@
 const pool = require('../config/database.cjs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 require('dotenv').config();
 
 // Costo de hashing bcrypt — balance entre seguridad y rendimiento (estándar recomendado)
 const SALT_ROUNDS = 10;
+
+// El enlace de restablecimiento vence 1 hora después de solicitarse
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 const login = async (req, res) => {
   try {
@@ -169,4 +173,112 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { login, register, getProfile, updateProfile };
+// ===== SOLICITAR RESTABLECIMIENTO DE CONTRASEÑA =====
+// Genera un token de un solo uso y con vencimiento. Igual que la contraseña,
+// en la base de datos NUNCA se guarda el token "usable": se guarda su hash
+// (sha256) y solo el valor en crudo (rawToken) viaja al usuario, normalmente
+// por correo. Aquí, mientras no haya un proveedor de correo configurado, se
+// registra en el log del servidor y (solo fuera de producción) se devuelve
+// en la respuesta para poder probar el flujo end-to-end.
+const forgotPassword = async (req, res) => {
+  try {
+    const { email, rol } = req.body;
+
+    if (!email || !rol) {
+      return res.status(400).json({ success: false, error: 'Correo y rol son requeridos' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id FROM usuarios WHERE email = ? AND rol = ?',
+      [email, rol]
+    );
+
+    // Respuesta genérica siempre, exista o no la cuenta: evita que alguien
+    // use este endpoint para averiguar qué correos están registrados.
+    const respuestaGenerica = {
+      success: true,
+      message: 'Si la cuenta existe, se generó un enlace de restablecimiento'
+    };
+
+    if (rows.length === 0) {
+      return res.json(respuestaGenerica);
+    }
+
+    const user = rows[0];
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expires = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+    await pool.query(
+      'UPDATE usuarios SET reset_password_token = ?, reset_password_expires = ? WHERE id = ?',
+      [hashedToken, expires, user.id]
+    );
+
+    // Enviar el correo con el enlace de restablecimiento
+    try {
+      const { sendResetPasswordEmail } = require('../services/emailService.cjs');
+      await sendResetPasswordEmail(email, rawToken, rol);
+    } catch (emailError) {
+      console.error('Error enviando correo:', emailError);
+      // Si falla el correo, igual devolvemos éxito pero con devToken para debug
+      if (process.env.NODE_ENV !== 'production') {
+        return res.json({ ...respuestaGenerica, devToken: rawToken, warning: 'No se pudo enviar el correo, verifica la configuración' });
+      }
+      // En producción, si falla el correo, informamos del error
+      return res.status(500).json({ success: false, error: 'No se pudo enviar el correo de restablecimiento' });
+    }
+
+    res.json(respuestaGenerica);
+  } catch (error) {
+    console.error('Error en forgotPassword:', error);
+    res.status(500).json({ success: false, error: 'Error del servidor' });
+  }
+};
+
+// ===== CONFIRMAR RESTABLECIMIENTO (guarda la nueva contraseña) =====
+const resetPassword = async (req, res) => {
+  try {
+    const { token, email, rol, newPassword } = req.body;
+
+    if (!token || !email || !rol || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Todos los campos son requeridos' });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ success: false, error: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const [rows] = await pool.query(
+      `SELECT id FROM usuarios
+       WHERE email = ? AND rol = ? AND reset_password_token = ? AND reset_password_expires > NOW()`,
+      [email, rol, hashedToken]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, error: 'El enlace es inválido o ya expiró' });
+    }
+
+    const user = rows[0];
+
+    // Se hashea con bcrypt exactamente igual que en login/register — la
+    // contraseña en texto plano nunca llega a tocar la base de datos.
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    await pool.query(
+      `UPDATE usuarios
+       SET password = ?, reset_password_token = NULL, reset_password_expires = NULL
+       WHERE id = ?`,
+      [hashedPassword, user.id]
+    );
+
+    res.json({ success: true, message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error en resetPassword:', error);
+    res.status(500).json({ success: false, error: 'Error del servidor' });
+  }
+};
+
+module.exports = { login, register, getProfile, updateProfile, forgotPassword, resetPassword };

@@ -97,6 +97,28 @@ export const api = {
     return data; // { success, user }
   },
 
+  async forgotPassword(email, rol) {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, rol })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al solicitar el restablecimiento');
+    return data; // { success, message, devToken? }
+  },
+
+  async resetPassword(token, email, rol, newPassword) {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, email, rol, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al restablecer la contraseña');
+    return data; // { success, message }
+  },
+
   async updateProfile(profileData) {
     const data = await request('/auth/profile', { method: 'PUT', body: profileData });
     return data; // { success, user }
