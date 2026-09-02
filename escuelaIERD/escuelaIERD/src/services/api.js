@@ -1,12 +1,134 @@
-const API_URL = 'http://localhost:5001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+// Helper para obtener el token guardado
+function getToken() {
+  return localStorage.getItem('ierd_token') || sessionStorage.getItem('ierd_token');
+}
+
+// Helper central de fetch: agrega SIEMPRE el header Authorization con el
+// token de sesión (todas las rutas del backend, excepto /auth/login y
+// /auth/register, están protegidas con authMiddleware y lo exigen).
+async function request(path, { method = 'GET', body } = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
+  }
+
+  if (!res.ok) {
+    const message = (data && (data.error || data.message)) || `Error HTTP ${res.status}`;
+    throw new Error(message);
+  }
+
+  return data;
+}
+
+// ===== Traducción de nombres de campo =====
+// El backend (MySQL) usa snake_case para la llave foránea del estudiante
+// (estudiante_id) en pagos/asistencias/notas, mientras que todo el frontend
+// (DataContext, Admin.jsx, Profesor.jsx, Estudiante.jsx) trabaja con
+// camelCase (estudianteId). Estas funciones adaptan en ambos sentidos sin
+// tener que tocar ni el backend ni los componentes ya existentes.
+function toBackendEstudianteId(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const { estudianteId, ...rest } = payload;
+  return estudianteId !== undefined
+    ? { ...rest, estudiante_id: estudianteId }
+    : payload;
+}
+
+function fromBackendEstudianteId(item) {
+  if (!item || typeof item !== 'object') return item;
+  if (item.estudiante_id === undefined) return item;
+  return { ...item, estudianteId: item.estudiante_id };
+}
+
+// El backend guarda el rol en la columna `rol`; el panel de Admin (y el
+// resto del frontend) usa `role`. Se traduce en ambos sentidos.
+function toBackendRol(payload) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const { role, ...rest } = payload;
+  return role !== undefined ? { ...rest, rol: role } : payload;
+}
+
+function fromBackendRol(item) {
+  if (!item || typeof item !== 'object') return item;
+  if (item.rol === undefined) return item;
+  return { ...item, role: item.rol };
+}
 
 export const api = {
+  // ===== AUTH =====
+  async login(email, password) {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+    return data; // { success, token, user }
+  },
+
+  async register(userData) {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al registrar usuario');
+    return data; // { success, user }
+  },
+
+  async getProfile() {
+    const data = await request('/auth/profile');
+    return data; // { success, user }
+  },
+
+  async forgotPassword(email, rol) {
+    const res = await fetch(`${API_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, rol })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al solicitar el restablecimiento');
+    return data; // { success, message, devToken? }
+  },
+
+  async resetPassword(token, email, rol, newPassword) {
+    const res = await fetch(`${API_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, email, rol, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al restablecer la contraseña');
+    return data; // { success, message }
+  },
+
+  async updateProfile(profileData) {
+    const data = await request('/auth/profile', { method: 'PUT', body: profileData });
+    return data; // { success, user }
+  },
+
   // ===== USUARIOS =====
   async getUsuarios() {
     try {
-      const res = await fetch(`${API_URL}/usuarios`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/usuarios');
+      return (data || []).map(fromBackendRol);
     } catch (error) {
       console.error('Error en getUsuarios:', error);
       return [];
@@ -15,10 +137,8 @@ export const api = {
 
   async getUsuarioByEmail(email) {
     try {
-      const res = await fetch(`${API_URL}/usuarios?email=${encodeURIComponent(email)}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      return data.length > 0 ? data[0] : null;
+      const usuarios = await this.getUsuarios();
+      return usuarios.find(u => u.email === email) || null;
     } catch (error) {
       console.error('Error en getUsuarioByEmail:', error);
       return null;
@@ -27,16 +147,8 @@ export const api = {
 
   async createUsuario(usuario) {
     try {
-      const res = await fetch(`${API_URL}/usuarios`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...usuario,
-          createdAt: new Date().toISOString()
-        })
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/usuarios', { method: 'POST', body: toBackendRol(usuario) });
+      return fromBackendRol(data);
     } catch (error) {
       console.error('Error en createUsuario:', error);
       return null;
@@ -45,13 +157,8 @@ export const api = {
 
   async updateUsuario(id, usuario) {
     try {
-      const res = await fetch(`${API_URL}/usuarios/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(usuario)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request(`/usuarios/${id}`, { method: 'PUT', body: toBackendRol(usuario) });
+      return fromBackendRol(data);
     } catch (error) {
       console.error('Error en updateUsuario:', error);
       return null;
@@ -60,11 +167,7 @@ export const api = {
 
   async deleteUsuario(id) {
     try {
-      const res = await fetch(`${API_URL}/usuarios/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/usuarios/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deleteUsuario:', error);
       return null;
@@ -74,9 +177,7 @@ export const api = {
   // ===== ESTUDIANTES =====
   async getEstudiantes() {
     try {
-      const res = await fetch(`${API_URL}/estudiantes`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request('/estudiantes');
     } catch (error) {
       console.error('Error en getEstudiantes:', error);
       return [];
@@ -85,9 +186,7 @@ export const api = {
 
   async getEstudianteById(id) {
     try {
-      const res = await fetch(`${API_URL}/estudiantes/${id}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/estudiantes/${id}`);
     } catch (error) {
       console.error('Error en getEstudianteById:', error);
       return null;
@@ -96,13 +195,7 @@ export const api = {
 
   async createEstudiante(estudiante) {
     try {
-      const res = await fetch(`${API_URL}/estudiantes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(estudiante)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request('/estudiantes', { method: 'POST', body: estudiante });
     } catch (error) {
       console.error('Error en createEstudiante:', error);
       return null;
@@ -111,13 +204,7 @@ export const api = {
 
   async updateEstudiante(id, estudiante) {
     try {
-      const res = await fetch(`${API_URL}/estudiantes/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(estudiante)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/estudiantes/${id}`, { method: 'PUT', body: estudiante });
     } catch (error) {
       console.error('Error en updateEstudiante:', error);
       return null;
@@ -126,11 +213,7 @@ export const api = {
 
   async deleteEstudiante(id) {
     try {
-      const res = await fetch(`${API_URL}/estudiantes/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/estudiantes/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deleteEstudiante:', error);
       return null;
@@ -140,9 +223,7 @@ export const api = {
   // ===== PROFESORES =====
   async getProfesores() {
     try {
-      const res = await fetch(`${API_URL}/profesores`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request('/profesores');
     } catch (error) {
       console.error('Error en getProfesores:', error);
       return [];
@@ -151,13 +232,7 @@ export const api = {
 
   async createProfesor(profesor) {
     try {
-      const res = await fetch(`${API_URL}/profesores`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profesor)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request('/profesores', { method: 'POST', body: profesor });
     } catch (error) {
       console.error('Error en createProfesor:', error);
       return null;
@@ -166,13 +241,7 @@ export const api = {
 
   async updateProfesor(id, profesor) {
     try {
-      const res = await fetch(`${API_URL}/profesores/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profesor)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/profesores/${id}`, { method: 'PUT', body: profesor });
     } catch (error) {
       console.error('Error en updateProfesor:', error);
       return null;
@@ -181,11 +250,7 @@ export const api = {
 
   async deleteProfesor(id) {
     try {
-      const res = await fetch(`${API_URL}/profesores/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/profesores/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deleteProfesor:', error);
       return null;
@@ -195,9 +260,8 @@ export const api = {
   // ===== PAGOS =====
   async getPagos() {
     try {
-      const res = await fetch(`${API_URL}/pagos`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/pagos');
+      return (data || []).map(fromBackendEstudianteId);
     } catch (error) {
       console.error('Error en getPagos:', error);
       return [];
@@ -206,13 +270,8 @@ export const api = {
 
   async createPago(pago) {
     try {
-      const res = await fetch(`${API_URL}/pagos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pago)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/pagos', { method: 'POST', body: toBackendEstudianteId(pago) });
+      return fromBackendEstudianteId(data);
     } catch (error) {
       console.error('Error en createPago:', error);
       return null;
@@ -221,13 +280,8 @@ export const api = {
 
   async updatePago(id, pago) {
     try {
-      const res = await fetch(`${API_URL}/pagos/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pago)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request(`/pagos/${id}`, { method: 'PUT', body: toBackendEstudianteId(pago) });
+      return fromBackendEstudianteId(data);
     } catch (error) {
       console.error('Error en updatePago:', error);
       return null;
@@ -236,11 +290,7 @@ export const api = {
 
   async deletePago(id) {
     try {
-      const res = await fetch(`${API_URL}/pagos/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/pagos/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deletePago:', error);
       return null;
@@ -250,9 +300,8 @@ export const api = {
   // ===== ASISTENCIAS =====
   async getAsistencias() {
     try {
-      const res = await fetch(`${API_URL}/asistencias`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/asistencias');
+      return (data || []).map(fromBackendEstudianteId);
     } catch (error) {
       console.error('Error en getAsistencias:', error);
       return [];
@@ -261,11 +310,10 @@ export const api = {
 
   async getAsistenciasByGrupo(grupo, fecha) {
     try {
-      let url = `${API_URL}/asistencias?grupo=${encodeURIComponent(grupo)}`;
-      if (fecha) url += `&fecha=${fecha}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      let path = `/asistencias/grupo?grupo=${encodeURIComponent(grupo)}`;
+      if (fecha) path += `&fecha=${fecha}`;
+      const data = await request(path);
+      return (data || []).map(fromBackendEstudianteId);
     } catch (error) {
       console.error('Error en getAsistenciasByGrupo:', error);
       return [];
@@ -274,13 +322,8 @@ export const api = {
 
   async createAsistencia(asistencia) {
     try {
-      const res = await fetch(`${API_URL}/asistencias`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(asistencia)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/asistencias', { method: 'POST', body: toBackendEstudianteId(asistencia) });
+      return fromBackendEstudianteId(data);
     } catch (error) {
       console.error('Error en createAsistencia:', error);
       return null;
@@ -289,13 +332,8 @@ export const api = {
 
   async updateAsistencia(id, asistencia) {
     try {
-      const res = await fetch(`${API_URL}/asistencias/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(asistencia)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request(`/asistencias/${id}`, { method: 'PUT', body: toBackendEstudianteId(asistencia) });
+      return fromBackendEstudianteId(data);
     } catch (error) {
       console.error('Error en updateAsistencia:', error);
       return null;
@@ -304,11 +342,7 @@ export const api = {
 
   async deleteAsistencia(id) {
     try {
-      const res = await fetch(`${API_URL}/asistencias/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/asistencias/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deleteAsistencia:', error);
       return null;
@@ -318,9 +352,8 @@ export const api = {
   // ===== NOTAS =====
   async getNotas() {
     try {
-      const res = await fetch(`${API_URL}/notas`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request('/notas');
+      return (data || []).map(fromBackendEstudianteId);
     } catch (error) {
       console.error('Error en getNotas:', error);
       return [];
@@ -329,9 +362,8 @@ export const api = {
 
   async getNotasByGrupo(grupo) {
     try {
-      const res = await fetch(`${API_URL}/notas?grupo=${encodeURIComponent(grupo)}`);
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      const data = await request(`/notas/grupo?grupo=${encodeURIComponent(grupo)}`);
+      return (data || []).map(fromBackendEstudianteId);
     } catch (error) {
       console.error('Error en getNotasByGrupo:', error);
       return [];
@@ -341,15 +373,10 @@ export const api = {
   async createNota(nota) {
     try {
       console.log('📝 API: Creando nota:', nota);
-      const res = await fetch(`${API_URL}/notas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nota)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      console.log('📝 API: Nota creada:', data);
-      return data;
+      const data = await request('/notas', { method: 'POST', body: toBackendEstudianteId(nota) });
+      const result = fromBackendEstudianteId(data);
+      console.log('📝 API: Nota creada:', result);
+      return result;
     } catch (error) {
       console.error('Error en createNota:', error);
       return null;
@@ -359,15 +386,10 @@ export const api = {
   async updateNota(id, nota) {
     try {
       console.log('📝 API: Actualizando nota:', id, nota);
-      const res = await fetch(`${API_URL}/notas/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nota)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      console.log('📝 API: Nota actualizada:', data);
-      return data;
+      const data = await request(`/notas/${id}`, { method: 'PUT', body: toBackendEstudianteId(nota) });
+      const result = fromBackendEstudianteId(data);
+      console.log('📝 API: Nota actualizada:', result);
+      return result;
     } catch (error) {
       console.error('Error en updateNota:', error);
       return null;
@@ -376,11 +398,7 @@ export const api = {
 
   async deleteNota(id) {
     try {
-      const res = await fetch(`${API_URL}/notas/${id}`, {
-        method: 'DELETE'
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+      return await request(`/notas/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Error en deleteNota:', error);
       return null;
