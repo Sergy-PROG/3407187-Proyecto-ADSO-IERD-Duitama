@@ -1,197 +1,131 @@
-# Diccionario de Datos
+# Diccionario de Datos — Sistema Escuela Deportiva IERD Duitama
 
-## Tabla: USUARIO
+> Actualizado a partir del esquema real implementado (Knex/MySQL: `backend/migrations/*`).
+> Reemplaza el diseño anterior (Deportista/Entrenador/Categoría/Torneo/Sede), que **no llegó a implementarse**.
 
-**Descripción:** Almacena la información de acceso de los usuarios del sistema.
+## Tabla: usuarios
+
+**Descripción:** Cuentas de acceso al sistema. Un mismo correo puede tener **varias cuentas** (una por rol) — por ejemplo, un padre y su hijo/a comparten el correo del padre, cada uno con su propia contraseña.
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_usuario | SERIAL | PK, NOT NULL | Identificador único del usuario. |
-| nombre | VARCHAR(100) | NOT NULL | Nombre completo del usuario. |
-| correo | VARCHAR(100) | NOT NULL, UNIQUE | Correo electrónico utilizado para iniciar sesión. |
-| contraseña | VARCHAR(255) | NOT NULL | Contraseña cifrada del usuario. |
-| rol | VARCHAR(20) | NOT NULL | Rol asignado (Administrador, Entrenador, Deportista). |
-| estado | BOOLEAN | NOT NULL | Estado de la cuenta (activa o inactiva). |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| nombre | VARCHAR(120) | NOT NULL | Nombre completo. |
+| email | VARCHAR(120) | NOT NULL | Correo de acceso. |
+| password | VARCHAR(255) | NOT NULL | Hash bcrypt de la contraseña (nunca texto plano). |
+| rol | ENUM | NOT NULL | `admin`, `profesor`, `estudiante`, `padre`. |
+| apodo | VARCHAR(60) | NULL | Alias mostrado en la interfaz. |
+| telefono | VARCHAR(20) | NULL | Contacto. |
+| cumpleanos | DATE | NULL | Fecha de nacimiento. |
+| foto | MEDIUMTEXT | NULL | Foto de perfil (base64). |
+| hijo | VARCHAR(120) | NULL | Nombre del hijo/a (solo si `rol = padre`). |
+| parentesco | VARCHAR(60) | NULL | Relación con el hijo/a (solo si `rol = padre`). |
+| reset_password_token | VARCHAR(255) | NULL | Hash SHA-256 del token de recuperación (nunca el token en crudo). |
+| reset_password_expires | DATETIME | NULL | Vencimiento del token (1 hora tras solicitarse). |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
+
+**Restricción compuesta:** `UNIQUE(email, rol)` — permite padre + hijo con el mismo correo, pero no dos cuentas duplicadas del mismo rol con el mismo correo.
 
 ---
 
-## Tabla: DEPORTISTA
+## Tabla: estudiantes
 
-**Descripción:** Contiene la información personal de los deportistas registrados.
+**Descripción:** Roster deportivo. Es el equivalente al antiguo "Deportista".
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_deportista | SERIAL | PK, NOT NULL | Identificador único del deportista. |
-| documento | VARCHAR(20) | NOT NULL, UNIQUE | Número de documento del deportista. |
-| nombre | VARCHAR(100) | NOT NULL | Nombre del deportista. |
-| apellido | VARCHAR(100) | NOT NULL | Apellido del deportista. |
-| fecha\_nacimiento | DATE | NOT NULL | Fecha de nacimiento. |
-| telefono | VARCHAR(20) | NOT NULL | Número telefónico de contacto. |
-| direccion | VARCHAR(150) | NOT NULL | Dirección de residencia. |
-| id\_categoria | INTEGER | FK, NOT NULL | Categoría a la que pertenece el deportista. |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| nombre | VARCHAR(120) | NOT NULL | Nombre del estudiante. |
+| documento | VARCHAR(30) | NOT NULL, UNIQUE | Documento de identidad. |
+| grupo | ENUM | NOT NULL | `Infantil`, `Prejuvenil`, `Juvenil`, `Femenino`, `Sin asignar`. |
+| acudiente | VARCHAR(120) | NULL | Nombre del acudiente. |
+| estado | ENUM | DEFAULT 'Activo' | `Activo` / `Inactivo`. |
+| foto | MEDIUMTEXT | NULL | Foto (base64). |
+| logros | TEXT | NULL | Arreglo JSON de logros/insignias (ej. `["asistencia","tecnica"]`). |
+| usuario_id | INTEGER | FK, NULL | Referencia a `usuarios.id` (cuenta con la que el estudiante inicia sesión). `ON DELETE SET NULL`. |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
+
+**Nota de diseño:** `grupo` reemplaza a la antigua tabla `CATEGORIA`. Se implementó como ENUM fijo dentro de `estudiantes`, no como tabla independiente — decisión que simplifica el modelo porque los grupos son fijos y no requieren edad_minima/edad_maxima ni entrenador asignado como se planeaba originalmente.
 
 ---
 
-## Tabla: ENTRENADOR
+## Tabla: profesores
 
-**Descripción:** Almacena la información de los entrenadores.
+**Descripción:** Equivalente al antiguo "Entrenador".
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_entrenador | SERIAL | PK, NOT NULL | Identificador único del entrenador. |
-| documento | VARCHAR(20) | NOT NULL, UNIQUE | Documento de identidad. |
-| nombre | VARCHAR(100) | NOT NULL | Nombre del entrenador. |
-| apellido | VARCHAR(100) | NOT NULL | Apellido del entrenador. |
-| especialidad | VARCHAR(100) | NOT NULL | Área deportiva de especialización. |
-| telefono | VARCHAR(20) | NOT NULL | Número telefónico. |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| nombre | VARCHAR(120) | NOT NULL | Nombre del profesor. |
+| email | VARCHAR(120) | NOT NULL, UNIQUE | Correo. |
+| especialidad | VARCHAR(120) | NULL | Área deportiva. |
+| foto | VARCHAR(255) | NULL | Foto de perfil. |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
 
 ---
 
-## Tabla: CATEGORIA
+## Tabla: pagos
 
-**Descripción:** Define las categorías deportivas de la escuela.
+**Descripción:** Control de pagos por estudiante (no existía en el diseño anterior).
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_categoria | SERIAL | PK, NOT NULL | Identificador de la categoría. |
-| nombre\_categoria | VARCHAR(50) | NOT NULL | Nombre de la categoría deportiva. |
-| descripcion | TEXT | NULL | Descripción de la categoría. |
-| edad\_minima | INTEGER | NOT NULL | Edad mínima permitida. |
-| edad\_maxima | INTEGER | NOT NULL | Edad máxima permitida. |
-| id\_entrenador | INTEGER | FK, NOT NULL | Entrenador responsable de la categoría. |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| estudiante_id | INTEGER | FK, NOT NULL | Referencia a `estudiantes.id`. `ON DELETE CASCADE`. |
+| concepto | VARCHAR(120) | NOT NULL | Motivo del pago (mensualidad, uniforme, etc.). |
+| monto | DECIMAL(10,2) | NOT NULL | Valor del pago. |
+| estado | ENUM | DEFAULT 'Pendiente' | `Pagado` / `Pendiente`. |
+| fecha | DATE | NOT NULL | Fecha del pago o vencimiento. |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
 
 ---
 
-## Tabla: HORARIO
+## Tabla: asistencias
 
-**Descripción:** Registra los horarios de entrenamiento.
+**Descripción:** Registro de asistencia por sesión de entrenamiento.
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_horario | SERIAL | PK, NOT NULL | Identificador único del horario. |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| estudiante_id | INTEGER | FK, NOT NULL | Referencia a `estudiantes.id`. `ON DELETE CASCADE`. |
 | fecha | DATE | NOT NULL | Fecha del entrenamiento. |
-| hora\_inicio | TIME | NOT NULL | Hora de inicio. |
-| hora\_fin | TIME | NOT NULL | Hora de finalización. |
-| lugar | VARCHAR(100) | NOT NULL | Lugar donde se realizará el entrenamiento. |
-| id\_categoria | INTEGER | FK, NOT NULL | Categoría asociada al horario. |
+| estado | ENUM | NOT NULL | `Presente`, `Ausente`, `Justificado`. |
+| grupo | ENUM | NOT NULL | Grupo del estudiante en ese momento (denormalizado para consultas rápidas por grupo). |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
+
+**Restricción compuesta:** `UNIQUE(estudiante_id, fecha)` → un estudiante solo puede tener **un** registro de asistencia por día. Esta es la regla de negocio equivalente a RN-01 del proyecto.
 
 ---
 
-## Tabla: SESION\_ENTRENAMIENTO
+## Tabla: notas
 
-**Descripción:** Representa cada sesión programada de entrenamiento.
+**Descripción:** Calificación de desempeño deportivo (reemplaza en la práctica a `SESION_ENTRENAMIENTO`, que no se implementó).
 
 | Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_sesion | SERIAL | PK, NOT NULL | Identificador de la sesión. |
-| fecha | DATE | NOT NULL | Fecha de la sesión. |
-| tema | VARCHAR(100) | NOT NULL | Tema o actividad principal. |
-| observaciones | TEXT | NULL | Comentarios adicionales. |
-| id\_horario | INTEGER | FK, NOT NULL | Horario asociado a la sesión. |
+|---|---|---|---|
+| id | INTEGER | PK, AUTO_INCREMENT | Identificador único. |
+| estudiante_id | INTEGER | FK, NOT NULL | Referencia a `estudiantes.id`. `ON DELETE CASCADE`. |
+| fecha | DATE | NOT NULL | Fecha de evaluación. |
+| tecnica | DECIMAL(3,1) | NOT NULL, CHECK 1–5 | Calificación técnica. |
+| tactica | DECIMAL(3,1) | NOT NULL, CHECK 1–5 | Calificación táctica. |
+| actitud | DECIMAL(3,1) | NOT NULL, CHECK 1–5 | Calificación actitudinal. |
+| grupo | ENUM | NOT NULL | Grupo del estudiante en ese momento. |
+| created_at / updated_at | TIMESTAMP | NOT NULL | Auditoría. |
 
 ---
 
-## Tabla: ASISTENCIA
+## Tablas planeadas y NO implementadas
 
-**Descripción:** Registra la asistencia de los deportistas a las sesiones.
+Estas tablas aparecían en el diseño original pero **no existen en la base de datos real**. Se documentan aquí para que la sustentación sea honesta sobre el alcance del MVP:
 
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_asistencia | SERIAL | PK, NOT NULL | Identificador único de la asistencia. |
-| fecha\_registro | DATE | NOT NULL | Fecha del registro. |
-| estado | VARCHAR(20) | NOT NULL | Estado de asistencia (Presente, Ausente, Justificado). |
-| id\_deportista | INTEGER | FK, NOT NULL | Deportista asociado. |
-| id\_sesion | INTEGER | FK, NOT NULL | Sesión de entrenamiento asociada. |
+| Tabla planeada | Estado | Equivalente real |
+|---|---|---|
+| CATEGORIA | No implementada | `estudiantes.grupo` (ENUM) |
+| HORARIO | No implementada | — |
+| SESION_ENTRENAMIENTO | No implementada | `notas` (cumple un rol similar) |
+| NOTICIA | No implementada | — |
+| REPORTE | No implementada | — |
+| SEDE | No implementada | — |
+| TORNEO / PARTICIPACION_TORNEO | No implementada | — |
 
----
-
-## Tabla: NOTICIA
-
-**Descripción:** Almacena noticias y comunicados publicados por la escuela.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_noticia | SERIAL | PK, NOT NULL | Identificador de la noticia. |
-| titulo | VARCHAR(200) | NOT NULL | Título de la noticia. |
-| contenido | TEXT | NOT NULL | Contenido de la publicación. |
-| fecha\_publicacion | DATE | NOT NULL | Fecha de publicación. |
-| id\_usuario | INTEGER | FK, NOT NULL | Usuario que publica la noticia. |
-
----
-
-## Tabla: REPORTE
-
-**Descripción:** Almacena los reportes generados por el sistema.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_reporte | SERIAL | PK, NOT NULL | Identificador del reporte. |
-| tipo\_reporte | VARCHAR(50) | NOT NULL | Tipo de reporte generado. |
-| fecha\_generacion | DATE | NOT NULL | Fecha de generación. |
-| id\_usuario | INTEGER | FK, NOT NULL | Usuario que generó el reporte. |
-
----
-
-## Tabla: ESTUDIANTE
-
-**Descripción:** Almacena la información académica y personal de los estudiantes vinculados a la Escuela de Formación Deportiva.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_estudiante | SERIAL | PK, NOT NULL | Identificador único del estudiante. |
-| documento | VARCHAR(20) | NOT NULL, UNIQUE | Documento de identidad del estudiante. |
-| nombre | VARCHAR(100) | NOT NULL | Nombre del estudiante. |
-| apellido | VARCHAR(100) | NOT NULL | Apellido del estudiante. |
-| fecha\_nacimiento | DATE | NOT NULL | Fecha de nacimiento. |
-| grado | VARCHAR(20) | NOT NULL | Grado académico actual. |
-| telefono | VARCHAR(20) | NULL | Número telefónico de contacto. |
-| direccion | VARCHAR(150) | NULL | Dirección de residencia. |
-| id\_categoria | INTEGER | FK | Categoría deportiva asignada. |
-
----
-
-## Tabla: SEDE
-
-**Descripción:** Almacena las sedes donde se desarrollan entrenamientos, torneos y actividades deportivas.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_sede | SERIAL | PK, NOT NULL | Identificador único de la sede. |
-| nombre\_sede | VARCHAR(100) | NOT NULL | Nombre de la sede deportiva. |
-| direccion | VARCHAR(150) | NOT NULL | Dirección de la sede. |
-| telefono | VARCHAR(20) | NULL | Teléfono de contacto. |
-| capacidad | INTEGER | NULL | Capacidad máxima de asistentes. |
-| estado | BOOLEAN | NOT NULL | Indica si la sede se encuentra activa. |
-
----
-
-## Tabla: TORNEO
-
-**Descripción:** Registra los torneos y competencias deportivas organizadas o en las que participa la escuela.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_torneo | SERIAL | PK, NOT NULL | Identificador único del torneo. |
-| nombre\_torneo | VARCHAR(100) | NOT NULL | Nombre oficial del torneo. |
-| fecha\_inicio | DATE | NOT NULL | Fecha de inicio del torneo. |
-| fecha\_fin | DATE | NOT NULL | Fecha de finalización del torneo. |
-| categoria | VARCHAR(50) | NOT NULL | Categoría participante. |
-| estado | VARCHAR(20) | NOT NULL | Estado del torneo (Programado, En curso, Finalizado). |
-| id\_sede | INTEGER | FK, NOT NULL | Sede donde se realizará el torneo. |
-
----
-
-## Tabla Intermedia: PARTICIPACION\_TORNEO
-
-Esta tabla resuelve la relación **N:M** entre estudiantes y torneos.
-
-**Descripción:** Registra la participación de los estudiantes en los diferentes torneos.
-
-| Campo | Tipo de Dato | Restricciones | Descripción |
-| :---- | :---- | :---- | :---- |
-| id\_participacion | SERIAL | PK, NOT NULL | Identificador único de participación. |
-| id\_estudiante | INTEGER | FK, NOT NULL | Estudiante participante. |
-| id\_torneo | INTEGER | FK, NOT NULL | Torneo en el que participa. |
-| posicion\_final | INTEGER | NULL | Posición obtenida al finalizar el torneo. |
-| observaciones | TEXT | NULL | Comentarios o anotaciones relevantes. |
-
+Si estas funcionalidades se retoman, deben tratarse como **backlog post-MVP**, no como deuda técnica del entregable actual.
